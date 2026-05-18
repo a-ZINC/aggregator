@@ -33,9 +33,9 @@ func (s *JobStore) Exists(ctx context.Context, urlHash string) (bool, error) {
 
 func (s *JobStore) Save(ctx context.Context, job *domain.Job) error {
 	_, err := s.db.ExecContext(ctx, `
-		INSERT INTO jobs (id, url_hash, title, company, location, description, apply_url, source, tags, salary_min, salary_max, status, posted_at, fetched_at, notified_at, raw_payload)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
-	`, job.Id, job.UrlHash, job.Title, job.Company, job.Location, job.Description, job.ApplyUrl, job.Source, pq.Array(job.Tags), job.SalaryMin, job.SalaryMax, job.Status, job.PostedAt, job.FetchedAt, job.NotifiedAt, job.RawPayload)
+		INSERT INTO jobs (url_hash, title, company, location, description, apply_url, source, tags, salary_min, salary_max, status, posted_at, fetched_at, notified_at, raw_payload)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+	`, job.UrlHash, job.Title, job.Company, job.Location, job.Description, job.ApplyUrl, job.Source, pq.Array(job.Tags), job.SalaryMin, job.SalaryMax, job.Status, job.PostedAt, job.FetchedAt, job.NotifiedAt, job.RawPayload)
 	if err != nil {
 		return fmt.Errorf("store: insert job: %w", err)
 	}
