@@ -1,12 +1,15 @@
 package main
 
 import (
+	"context"
 	"log/slog"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/a-ZINC/aggregator/config"
 	"github.com/a-ZINC/aggregator/internal/db"
-	"github.com/a-ZINC/aggregator/internal/domain"
 	"github.com/a-ZINC/aggregator/internal/filter"
 	"github.com/a-ZINC/aggregator/internal/notifier"
 	"github.com/a-ZINC/aggregator/internal/orchestrator"
@@ -36,10 +39,39 @@ func main() {
 		return
 	}
 	jobstore := store.NewJobStore(db)
-	notifier := notifier.NewTelegramNotifier(config.TelegramBotToken, config.TelegramChatId)
+	notifier := notifier.NewTelegramNotifier(config.TelegramBotToken, config.TelegramChatId, config.RateLimitSeconds)
 	filter := filter.NewKeywordEvaluator(filterConfig)
 
-	jobsChannel := make(chan []domain.Job, 100)
-	orchestrator := orchestrator.NewOrchestrator(jobstore, filter, notifier)
-orchestrator.Run()
+	orchestrator := orchestrator.NewOrchestrator(jobstore, filter, notifier, config.MaxFetchWorkers)
+
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	interval := config.PollInterval
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	slog.Info("🚀 Running initial startup job aggregation sequence...")
+	orchestrator.Run()
+	slog.Info("💤 Startup sequence complete. Scheduler entering standby state.", "interval", interval.String())
+
+	for {
+		select {
+		case <-ticker.C:
+			slog.Info("⏰ 12-Hour interval reached. Triggering aggregation cycle...")
+			
+			startTime := time.Now()
+			
+			orchestrator.Run()
+			
+			slog.Info("✅ Aggregation cycle finished successfully", 
+				"duration", time.Since(startTime).Round(time.Second).String(),
+			)
+		case <-ctx.Done():
+			slog.Info("👋 Shutdown signal received. Exiting gracefully...")
+			return
+		}
+	}
+	
 }

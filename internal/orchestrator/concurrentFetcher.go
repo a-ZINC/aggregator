@@ -10,14 +10,12 @@ import (
 
 type ConcurrentFetcher struct {
 	fetchers []domain.Fetcher
-	jobsChannel chan []domain.Job
 	wg sync.WaitGroup
 }
 
-func NewConcurrentFetcher(jobsChannel chan []domain.Job) *ConcurrentFetcher {
+func NewConcurrentFetcher() *ConcurrentFetcher {
 	return &ConcurrentFetcher{
 		fetchers: []domain.Fetcher{},
-		jobsChannel: jobsChannel,
 		wg: sync.WaitGroup{},
 	}
 }
@@ -26,16 +24,17 @@ func (cf *ConcurrentFetcher) AddFetcher(f domain.Fetcher) {
 	cf.fetchers = append(cf.fetchers, f)
 }
 
-func (cf *ConcurrentFetcher) FetchAll() (error) {
-	defer close(cf.jobsChannel)
+func (cf *ConcurrentFetcher) FetchAll(jobsChannel chan []domain.Job) (error) {
+	defer close(jobsChannel)
 	var wg sync.WaitGroup
 	for _, fetcher := range cf.fetchers {
 		wg.Add(1)
-		go cf.fetchAndSend(fetcher, cf.jobsChannel, &wg)
+		go cf.fetchAndSend(fetcher, jobsChannel, &wg)
 	}
 	wg.Wait()
 	return nil
 }
+
 func (cf *ConcurrentFetcher) fetchAndSend(fetcher domain.Fetcher, jobs chan <- []domain.Job, wg *sync.WaitGroup) {
 	defer wg.Done()
 	fetchedJobs, err := fetcher.Fetch(context.Background())

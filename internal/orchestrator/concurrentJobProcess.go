@@ -2,7 +2,6 @@ package orchestrator
 
 import (
 	"context"
-	"log"
 	"log/slog"
 	"sync"
 
@@ -10,11 +9,9 @@ import (
 	"github.com/a-ZINC/aggregator/internal/filter"
 	"github.com/a-ZINC/aggregator/internal/notifier"
 	"github.com/a-ZINC/aggregator/internal/store"
-	"golang.org/x/sync/semaphore"
 )
 
 type ConcurrentJobProcessor struct {
-	jobsChannel chan []domain.Job
 	jobStore *store.JobStore
 	filter filter.Evaluator
 	notifier notifier.Notifier
@@ -22,9 +19,8 @@ type ConcurrentJobProcessor struct {
 	fetchWorkers int
 }
 
-func NewConcurrentJobProcessor(jobsChannel chan []domain.Job, jobStore *store.JobStore, filter filter.Evaluator, notifier notifier.Notifier, fetchWorkers int) *ConcurrentJobProcessor {
+func NewConcurrentJobProcessor(jobStore *store.JobStore, filter filter.Evaluator, notifier notifier.Notifier, fetchWorkers int) *ConcurrentJobProcessor {
 	return &ConcurrentJobProcessor{
-		jobsChannel: jobsChannel,
 		jobStore: jobStore,
 		filter: filter,
 		fetchWorkers: fetchWorkers,
@@ -33,9 +29,9 @@ func NewConcurrentJobProcessor(jobsChannel chan []domain.Job, jobStore *store.Jo
 	}
 }
 
-func (jp *ConcurrentJobProcessor) ProcessJobs(ctx context.Context) {
+func (jp *ConcurrentJobProcessor) ProcessJobs(ctx context.Context, jobsChannel chan []domain.Job) {
 	slog.InfoContext(ctx, "🚀 Starting job processor pipeline")
-	for batch := range jp.jobsChannel {
+	for batch := range jobsChannel {
 		slog.DebugContext(ctx, "📥 Received batch from channel", "batch_size", len(batch))
 		jp.wg.Add(1)
 		go func(jobs []domain.Job) {
@@ -57,7 +53,7 @@ func (jp *ConcurrentJobProcessor) processBatch(ctx context.Context, jobs []domai
 			defer func() { <-semaphore }()
 			err := jp.processJob(ctx, j)
 			if err != nil {
-				slog.ErrorContext(ctx, "❌ Error processing job", "job", j, "error", err)
+				slog.ErrorContext(ctx, "❌ Error processing job", "jobHash", j.UrlHash, "error", err)
 				jp.jobStore.UpdateStatus(ctx, j.UrlHash, domain.Expired)
 				return
 			}
@@ -66,7 +62,15 @@ func (jp *ConcurrentJobProcessor) processBatch(ctx context.Context, jobs []domai
 }
 
 func (jp *ConcurrentJobProcessor) processJob(ctx context.Context, job domain.Job) (error) {
-	evaluation, err := jp.filter.Evaluate(nil, &job)
+	exist, err :=jp.jobStore.Exists(ctx, job.UrlHash)
+	if err != nil {
+		return err
+	}
+	if exist {
+		slog.InfoContext(ctx, "⚠️ Job already exists, skipping", "url_hash", job.UrlHash)
+		return nil
+	}
+	evaluation, err := jp.filter.Evaluate(ctx, &job)
 	if err != nil {
 		return err
 	}
@@ -87,7 +91,7 @@ func (jp *ConcurrentJobProcessor) processJob(ctx context.Context, job domain.Job
 
 	err = jp.notifier.Notify(ctx, &job, evaluation.Reason)
 	if err != nil {
-		slog.ErrorContext(ctx, "❌ Error notifying job", "job", job, "error", err)
+		slog.ErrorContext(ctx, "❌ Error notifying job", "jobHash", job.UrlHash, "error", err)
 		return err
 	}
 

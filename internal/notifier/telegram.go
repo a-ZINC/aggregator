@@ -17,15 +17,17 @@ type TelegramNotifier struct {
 	token  string
 	chatId string
 	httpClient *http.Client
+	ratelimiter <-chan time.Time
 }
 
-func NewTelegramNotifier(token, chatId string) *TelegramNotifier {
+func NewTelegramNotifier(token, chatId string, rateLimitSeconds int) *TelegramNotifier {
 	return &TelegramNotifier{
 		token:  token,
 		chatId: chatId,
 		httpClient: &http.Client{
 			Timeout: 10 * time.Second,
 		},
+		ratelimiter: time.Tick(time.Duration(rateLimitSeconds) * time.Second),
 	}
 }
 
@@ -37,6 +39,9 @@ func (t *TelegramNotifier) Notify(ctx context.Context, job *domain.Job, reason s
 	data.Set("text", formattedText)
 	data.Set("parse_mode", "HTML")
 	data.Set("disable_web_page_preview", "true")
+
+	// Wait for the rate limiter before sending the request
+	<-t.ratelimiter
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, apiUrl, strings.NewReader(data.Encode()))
 	if err != nil {
