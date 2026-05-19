@@ -19,6 +19,7 @@ type Config struct {
 	MaxOpenConns     int
 	MaxIdleConns     int
 	ConnMaxLifetime  time.Duration
+	maxFetchWorkers   int
 }
 
 func getStringEnv(key string, defaultVal string) string {
@@ -75,8 +76,9 @@ func Load() *Config {
 	cfg.ConnMaxLifetime = time.Duration(getIntEnv("DB_CONN_MAX_LIFETIME_MINUTES", 30)) * time.Minute
 	cfg.TelegramBotToken = getStringEnv("TELEGRAM_BOT_TOKEN", "")
 	cfg.TelegramChatId = getStringEnv("TELEGRAM_CHAT_ID", "")
-	cfg.AllowKeywords = getStringSliceEnv("ALLOW_KEYWORDS", []string{"golang", "remote", "backend"})
-	cfg.ExcludeKeywords = getStringSliceEnv("EXCLUDE_KEYWORDS", []string{"senior", "manager"})
+	cfg.AllowKeywords = getStringSliceEnv("ALLOW_KEYWORDS", []string{"golang", "fullstack", "full-stack", "backend engineer", "go", "backend", "remote", "software", "engineer", "sde", "developer", "distributed", "systems", "cloud", "aws", "gcp", "azure", "kubernetes", "docker", "microservices", "api", "rest", "grpc", "sql", "nosql", "postgres", "mongodb", "redis", "elasticsearch", "ci/cd", "devops", "site reliability", "sre", "observability", "monitoring", "logging", "tracing", "security", "performance", "scalability", "high availability", "low latency", "concurrency", "parallelism", "message queues", "kafka", "rabbitmq", "aws sns", "aws sqs", "gcp pubsub", "azure service bus"})
+	cfg.ExcludeKeywords = getStringSliceEnv("EXCLUDE_KEYWORDS", []string{"senior", "manager", "director", "lead", "principal", "staff", "vp", "c-level", "cto", "ceo", "founder", "co-founder"})
+	cfg.maxFetchWorkers = getIntEnv("MAX_FETCH_WORKERS", 10)
 	return &cfg
 }
 

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"html"
-	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -32,31 +31,12 @@ func NewTelegramNotifier(token, chatId string) *TelegramNotifier {
 
 func (t *TelegramNotifier) Notify(ctx context.Context, job *domain.Job, reason string) error {
 	apiUrl := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage", t.token)
-	safeTitle := html.EscapeString(job.Title)
-	safeCompany := html.EscapeString(job.Company)
-	safeSource := html.EscapeString(job.Source)
-	safeReason := html.EscapeString(reason)
-	safeUrl := html.EscapeString(job.ApplyUrl)
-
-	formattedText := fmt.Sprintf(
-		"🎯 <b>New High-Signal Remote Match</b>\n\n"+
-			"<b>Role:</b> %s\n"+
-			"<b>Company:</b> %s\n"+
-			"<b>Source:</b> %s\n\n"+
-			"💡 <b>Verdict:</b> %s\n\n"+
-			"🔗 <a href=\"%s\">Apply to Position</a>",
-		safeTitle, safeCompany, safeSource, safeReason, safeUrl,
-	)
-
-	log.Printf("[DEBUG] Target Chat ID: %q", t.chatId)
-	log.Printf("[DEBUG] Job Title Raw: %q -> Safe: %q", job.Title, safeTitle)
-	log.Printf("[DEBUG] Job URL Raw: %q -> Safe: %q", job.ApplyUrl, safeUrl)
-	log.Printf("[DEBUG] Final Formatted Text:\n%s\n", formattedText)
-
+	formattedText := formatMessage(job)
 	data := url.Values{}
 	data.Set("chat_id", t.chatId)
 	data.Set("text", formattedText)
 	data.Set("parse_mode", "HTML")
+	data.Set("disable_web_page_preview", "true")
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, apiUrl, strings.NewReader(data.Encode()))
 	if err != nil {
@@ -78,4 +58,34 @@ func (t *TelegramNotifier) Notify(ctx context.Context, job *domain.Job, reason s
 		return fmt.Errorf("telegram API returned status %d: %v", resp.StatusCode, payload)
 	}
 	return nil
+}
+
+func formatMessage(job *domain.Job) string {
+	var sb strings.Builder
+
+	sb.WriteString("🎯 <b>New Remote Job Match</b>\n\n")
+	sb.WriteString(fmt.Sprintf("<b>Role:</b> %s\n", html.EscapeString(job.Title)))
+	sb.WriteString(fmt.Sprintf("<b>Company:</b> %s\n", html.EscapeString(job.Company)))
+	sb.WriteString(fmt.Sprintf("<b>Source:</b> %s\n", html.EscapeString(job.Source)))
+
+	if job.Location != "" {
+		sb.WriteString(fmt.Sprintf("<b>Location:</b> %s\n", html.EscapeString(job.Location)))
+	}
+
+	if job.SalaryMin > 0 {
+		sb.WriteString(fmt.Sprintf("<b>Salary:</b> $%d — $%d\n", job.SalaryMin, job.SalaryMax))
+	}
+
+	if len(job.Tags) > 0 {
+		// Show max 5 tags — enough signal without flooding the message
+		tags := job.Tags
+		if len(tags) > 5 {
+			tags = tags[:5]
+		}
+		sb.WriteString(fmt.Sprintf("<b>Tags:</b> %s\n", strings.Join(tags, ", ")))
+	}
+
+	sb.WriteString(fmt.Sprintf("\n🔗 <a href=\"%s\">Apply Now</a>", job.ApplyUrl))
+
+	return sb.String()
 }

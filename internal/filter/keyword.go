@@ -2,14 +2,13 @@ package filter
 
 import (
 	"context"
-	"crypto/des"
 	"fmt"
 	"strings"
 
 	"github.com/a-ZINC/aggregator/internal/domain"
 )
 
-type config struct {
+type Config struct {
 	AllowKeywords   []string
 	ExcludeKeywords []string
 }
@@ -19,7 +18,7 @@ type KeywordEvaluator struct {
 	denyList  []string
 }
 
-func NewKeywordEvaluator(cfg config) *KeywordEvaluator {
+func NewKeywordEvaluator(cfg Config) *KeywordEvaluator {
 	allow := make([]string, len(cfg.AllowKeywords))
 	for i, v := range cfg.AllowKeywords {
 		allow[i] = strings.ToLower(v)
@@ -41,26 +40,26 @@ func (e *KeywordEvaluator) Evaluate(ctx context.Context, job *domain.Job) (Evalu
 	for _, word := range e.denyList {
 		if strings.Contains(title, word) {
 			return Evaluation{Eligible: false,
-				Reason: fmt.Sprintf("Disqualified: Found blocklisted term '%s' in job title.", word)
+				Reason: fmt.Sprintf("Disqualified: Found blocklisted term '%s' in job title.", word),
 				}, nil
 		}
 	}
 
 	for _, word := range e.allowList {
 		if strings.Contains(title, word) {
-			return Result{
+			return Evaluation{
 				Eligible: true,
 				Reason:   fmt.Sprintf("allowed: matched %q in title", word),
 			}, nil
 		}
 		if tagsContain(job.Tags, word) {
-			return Result{
+			return Evaluation{
 				Eligible: true,
 				Reason:   fmt.Sprintf("allowed: matched %q in tags", word),
 			}, nil
 		}
 		if strings.Contains(desc, word) {
-			return Result{
+			return Evaluation{
 				Eligible: true,
 				Reason:   fmt.Sprintf("allowed: matched %q in description", word),
 			}, nil
