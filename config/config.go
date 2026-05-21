@@ -81,7 +81,7 @@ func splitAndTrim(s string, sep string) []string {
 func Load() *Config {
 	var cfg Config
 
-	cfg.PollInterval = time.Duration(getIntEnv("POLL_INTERVAL", 2)) * time.Minute
+	cfg.PollInterval = time.Duration(getIntEnv("POLL_INTERVAL", 12)) * time.Hour
 	cfg.DbUrl = getStringEnv("DB_URL", "sqlite:///jobs.db")
 	cfg.MaxOpenConns = getInt32Env("DB_MAX_OPEN_CONNS", 10)
 	cfg.MaxIdleConns = getInt32Env("DB_MAX_IDLE_CONNS", 5)
