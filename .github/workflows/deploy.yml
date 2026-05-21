@@ -66,7 +66,7 @@ jobs:
             docker run -d \
             --name aggregator-app \
             --restart unless-stopped \
-            -p 80:80\
+            -p 80:80 \
             -e DB_URL="${{ secrets.DB_URL }}" \
             -e TELEGRAM_BOT_TOKEN="${{ secrets.TELEGRAM_BOT_TOKEN }}" \
             -e TELEGRAM_CHAT_ID="${{ secrets.TELEGRAM_CHAT_ID }}" \
