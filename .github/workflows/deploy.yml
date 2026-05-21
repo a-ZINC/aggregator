@@ -44,6 +44,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Downcase Repo Name
+        id: string
+        run: |
+          echo "repo=${GITHUB_REPOSITORY,,}" >> $GITHUB_OUTPUT
+
       - name: Remote SSH command execution
         uses: appleboy/ssh-action@v0.1.7
         with:
@@ -51,7 +56,7 @@ jobs:
           username: ${{ secrets.GCP_VM_USER }}
           key: ${{ secrets.GCP_SSH_PRIVATE_KEY }}
           script: |
-            docker pull ghcr.io/${{ github.repository }}:latest
+            docker pull ghcr.io/${{ steps.string.outputs.repo }}:latest
             
             docker stop aggregator-app || true
             docker rm aggregator-app || true
@@ -60,11 +65,11 @@ jobs:
 
             docker run -d \
             --name aggregator-app \
-            -restart unless-stopped \
+            --restart unless-stopped \
             -p 80:80\
             -e DB_URL="${{ secrets.DB_URL }}" \
             -e TELEGRAM_BOT_TOKEN="${{ secrets.TELEGRAM_BOT_TOKEN }}" \
             -e TELEGRAM_CHAT_ID="${{ secrets.TELEGRAM_CHAT_ID }}" \
             -e POLL_INTERVAL="${{ secrets.POLL_INTERVAL }}" \
             -e RATELIMIT_SECONDS="${{ secrets.RATELIMIT_SECONDS }}" \
-            ghcr.io/${{ github.repository }}:latest
+            ghcr.io/${{ steps.string.outputs.repo }}:latest
