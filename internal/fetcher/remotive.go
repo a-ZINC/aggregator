@@ -2,7 +2,6 @@ package fetcher
 
 import (
 	"context"
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -13,7 +12,7 @@ import (
 )
 
 const (
-	remotiveApiUrl = "https://remotive.io/api/remote-jobs"
+	remotiveApiUrl = "https://remotive.com/api/remote-jobs"
 	remotiveDateFmt = "2006-01-02T15:04:05"
 	remotiveTimeout = 15 * time.Second
 )
@@ -44,14 +43,8 @@ type remotiveResponse struct {
 }
 
 func NewRemotiveFetcher() *RemotiveFetcher {
-	transport := &http.Transport{
-		TLSClientConfig: &tls.Config{
-			MinVersion: tls.VersionTLS12,
-		},
-		DisableCompression: false,
-	}
 	return &RemotiveFetcher{
-		Client: &http.Client{Timeout: remotiveTimeout, Transport: transport},
+		Client: &http.Client{Timeout: remotiveTimeout},
 
 	}
 }
@@ -65,7 +58,6 @@ func (f *RemotiveFetcher) Fetch(ctx context.Context) ([]domain.Job, error) {
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", "aggregator-bot/1.0")
 	req.Header.Set("Cache-Control", "no-cache")
-	req.Header.Set("Accept-Encoding", "gzip, deflate, br")
 	req.Header.Set("Connection", "keep-alive")
 	req.Header.Set("Accept-Language", "en-US,en;q=0.9")
 	resp, err := f.Client.Do(req)
