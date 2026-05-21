@@ -1,0 +1,74 @@
+name: Production CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - develop
+  workflow_dispatch:
+
+jobs:
+  test-and-build:
+    name: Build & Push Container
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Metadata(Tags/Labels)
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=raw,value=latest
+            type=raw,value=${{ github.sha }}
+      
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          push: true
+          tags: ${{ id.meta.outputs.tags }}
+          labels: ${{ id.meta.outputs.labels }}
+
+  deploy:
+    name: Deploy to Production
+    needs: test-and-build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Remote SSH command execution
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ secrets.REMOTE_HOST }}
+          username: ${{ secrets.REMOTE_USER }}
+          key: ${{ secrets.REMOTE_SSH_KEY }}
+          port: ${{ secrets.REMOTE_SSH_PORT }}
+          script: |
+            docker pull ghcr.io/${{ github.repository }}:latest
+            
+            docker stop aggregator-app || true
+            docker rm aggregator-app || true
+
+            docker image prune -f
+
+            docker run -d \
+            --name aggregator-app \
+            -restart unless-stopped \
+            -p 80:80\
+            -e DB_URL="${{ secrets.DB_URL }}" \
+            -e TELEGRAM_BOT_TOKEN="${{ secrets.TELEGRAM_BOT_TOKEN }}" \
+            -e TELEGRAM_CHAT_ID="${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -e POLL_INTERVAL="${{ secrets.POLL_INTERVAL }}" \
+            -e RATELIMIT_SECONDS="${{ secrets.RATELIMIT_SECONDS }}" \
+            ghcr.io/${{ github.repository }}:latest
