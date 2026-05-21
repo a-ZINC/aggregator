@@ -22,4 +22,3 @@ COPY --from=builder /app/aggregator .
 EXPOSE 8080
 
 CMD ["./aggregator"]
-
