@@ -29,8 +29,8 @@ func main() {
 		ConnMaxLifetime: config.ConnMaxLifetime,
 	}
 	filterConfig := filter.Config{
-		AllowKeywords: config.AllowKeywords,
-		ExcludeKeywords: config.ExcludeKeywords,
+		StackKeywords: config.StackKeywords,
+		DenyKeywords:  config.DenyKeywords,
 	}
 
 	db, err := db.NewConnectionPool(dbConfig)

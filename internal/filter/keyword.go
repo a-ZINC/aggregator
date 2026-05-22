@@ -9,26 +9,26 @@ import (
 )
 
 type Config struct {
-	AllowKeywords   []string
-	ExcludeKeywords []string
+	StackKeywords []string
+	DenyKeywords  []string
 }
 
 type KeywordEvaluator struct {
-	allowList []string
+	stackList []string
 	denyList  []string
 }
 
 func NewKeywordEvaluator(cfg Config) *KeywordEvaluator {
-	allow := make([]string, len(cfg.AllowKeywords))
-	for i, v := range cfg.AllowKeywords {
-		allow[i] = strings.ToLower(v)
+	stack := make([]string, len(cfg.StackKeywords))
+	for i, v := range cfg.StackKeywords {
+		stack[i] = strings.ToLower(v)
 	}
-	deny := make([]string, len(cfg.ExcludeKeywords))
-	for i, v := range cfg.ExcludeKeywords {
+	deny := make([]string, len(cfg.DenyKeywords))
+	for i, v := range cfg.DenyKeywords {
 		deny[i] = strings.ToLower(v)
 	}
 	return &KeywordEvaluator{
-		allowList: allow,
+		stackList: stack,
 		denyList:  deny,
 	}
 }
@@ -45,7 +45,7 @@ func (e *KeywordEvaluator) Evaluate(ctx context.Context, job *domain.Job) (Evalu
 		}
 	}
 
-	for _, word := range e.allowList {
+	for _, word := range e.stackList {
 		if strings.Contains(title, word) {
 			return Evaluation{
 				Eligible: true,

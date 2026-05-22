@@ -13,14 +13,42 @@ type Config struct {
 	DbUrl            string
 	TelegramBotToken string
 	TelegramChatId   string
-	AllowKeywords    []string
-	ExcludeKeywords  []string
+	StackKeywords   []string
+	DenyKeywords    []string
 	PollInterval     time.Duration
 	MaxOpenConns     int32
 	MaxIdleConns     int32
 	ConnMaxLifetime  time.Duration
 	MaxFetchWorkers  int
 	RateLimitSeconds int
+}
+
+var DefaultConfig = Config{
+	StackKeywords: []string{
+		"java", "spring", "spring boot", "kubernetes", "k8s", "prometheus", "grafana",
+		"opentelemetry", "observability", "monitoring", "ci/cd", "github actions",
+		"helm", "istio", "service mesh", "alertmanager",
+		"kafka", "confluent", "aws", "lambda", "s3", "sqs", "sns", "ec2", "ses",
+        "microservices", "event-driven architecture", "serverless", "audit trail", 
+        "webhook", "goroutine", "concurrency",
+        "postgresql", "postgres", "redis", "mongodb", "sql", "prisma", "sequelize", 
+        "database management", "dbms", "query optimization", "indexing",
+        "container runtime", "namespaces", "cgroups", "cgroups v2", "iptables", "nat", 
+        "veth", "ipam", "network isolation", "wsl2", "dockerfile", "docker-compose",
+        "javascript", "typescript", "node.js", "express.js", "react", "react.js", 
+        "next.js", "trpc", "langchain", "webpack", 
+        "gulp", "lazy loading", "stripe", "oauth2",
+		"aws", "kubernetes", "k8s", "docker", "kafka", "microservices", "distributed",
+        "postgresql", "postgres", "sql", "redis", "nosql", "ci/cd",
+    },
+
+    DenyKeywords: []string{
+        "ios", "android", "flutter", "react native", "swift", "kotlin developer",
+        "wordpress", "shopify", "magento", "php", "laravel", "web designer", "ui/ux",
+        "scrum master", "project manager", "product manager", "product owner", 
+        "qa engineer", "qa tester", "manual tester", "business analyst",
+        "helpdesk", "it support", "hardware technician", "system administrator",
+    },
 }
 
 func getStringEnv(key string, defaultVal string) string {
@@ -88,8 +116,8 @@ func Load() *Config {
 	cfg.ConnMaxLifetime = time.Duration(getIntEnv("DB_CONN_MAX_LIFETIME_MINUTES", 30)) * time.Minute
 	cfg.TelegramBotToken = getStringEnv("TELEGRAM_BOT_TOKEN", "")
 	cfg.TelegramChatId = getStringEnv("TELEGRAM_CHAT_ID", "")
-	cfg.AllowKeywords = getStringSliceEnv("ALLOW_KEYWORDS", []string{"golang", "java", "c++", "python", "javascript", "node.js", "node", "fullstack", "full-stack", "backend engineer", "golang", "backend", "remote", "software", "engineer", "sde", "developer", "distributed", "systems", "cloud", "aws", "gcp", "azure", "kubernetes", "docker", "microservices", "api", "rest", "grpc", "sql", "nosql", "postgres", "mongodb", "redis", "elasticsearch", "ci/cd", "devops", "site reliability", "sre", "observability", "monitoring", "logging", "tracing", "security", "performance", "scalability", "high availability", "low latency", "concurrency", "parallelism", "message queues", "kafka", "rabbitmq", "aws sns", "aws sqs", "gcp pubsub", "azure service bus"})
-	cfg.ExcludeKeywords = getStringSliceEnv("EXCLUDE_KEYWORDS", []string{"senior", "manager", "director", "lead", "principal", "staff", "vp", "c-level", "cto", "ceo", "founder", "co-founder"})
+	cfg.StackKeywords = getStringSliceEnv("STACK_KEYWORDS", DefaultConfig.StackKeywords)
+	cfg.DenyKeywords = getStringSliceEnv("DENY_KEYWORDS", DefaultConfig.DenyKeywords)
 	cfg.MaxFetchWorkers = getIntEnv("MAX_FETCH_WORKERS", 10)
 	cfg.RateLimitSeconds = getIntEnv("RATELIMIT_SECONDS", 10)
 	return &cfg
